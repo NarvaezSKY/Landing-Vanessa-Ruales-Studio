@@ -1,0 +1,33 @@
+---
+import { Image } from 'astro:assets'
+
+import { portraitImage } from '@/data/site'
+---
+
+<section id="conocenos" class="about dark-section section-pad">
+  <div class="container about-grid">
+    <div class="about-image" data-reveal>
+      <Image
+        src={portraitImage}
+        alt="Vanessa Ruales, fundadora del estudio"
+        widths={[450, 590, 800, 1000]}
+        sizes="(max-width: 700px) 90vw, 45vw"
+        format="webp"
+        quality={80}
+      />
+    </div>
+
+    <div class="about-copy" data-reveal style="--reveal-delay:160ms">
+      <p class="eyebrow">04 / CONÓCENOS</p>
+      <h2 class="display-title">Detrás de cada<br /><em>detalle.</em></h2>
+      <p class="body-copy">
+        Vanessa Ruales es la fundadora y corazón creativo del estudio. Su mirada combina la
+        precisión técnica con una sensibilidad única para resaltar lo que ya te hace especial.
+      </p>
+      <p class="body-copy">
+        Aquí, cada cita es una conversación, un diagnóstico honesto y un momento solo para ti.
+      </p>
+      <div class="signature">VR <span>— Vanessa Ruales</span></div>
+    </div>
+  </div>
+</section>

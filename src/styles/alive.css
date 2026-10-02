@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Scroll reveal + ambient particles
+   Loaded after global.css from the layout.
+
+   Every hiding rule below is scoped to `.has-js`, a class set by an inline
+   script in <head>. If JavaScript never runs, nothing is ever hidden -- so the
+   page degrades to fully visible content instead of a blank screen.
+   ========================================================================== */
+
+.has-js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 30px, 0);
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.has-js [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* The hero is already in view on load, so it plays a one-shot entrance
+   instead of waiting for a scroll position it will never receive. */
+.has-js .hero-inner > .reveal {
+  opacity: 0;
+  animation: reveal-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.has-js .hero-inner > .reveal:nth-child(1) {
+  animation-delay: 0.12s;
+}
+.has-js .hero-inner > .reveal:nth-child(2) {
+  animation-delay: 0.26s;
+}
+.has-js .hero-inner > .reveal:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.has-js .hero-inner > .reveal:nth-child(4) {
+  animation-delay: 0.54s;
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 30px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Ambient particles -------------------------------------------------- */
+
+/* Sits above the opaque section backgrounds but below the nav (z-index 10)
+   and the service dialog (z-index 30). pointer-events:none keeps it inert. */
+[data-particles] {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* --- Reduced motion ----------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .has-js [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .has-js .hero-inner > .reveal {
+    opacity: 1;
+    animation: none;
+  }
+  [data-particles] {
+    display: none;
+  }
+}

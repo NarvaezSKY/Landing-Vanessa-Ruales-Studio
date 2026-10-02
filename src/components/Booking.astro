@@ -1,0 +1,52 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+
+import { services, socials } from '@/data/site'
+---
+
+<section id="citas" class="booking dark-section section-pad">
+  <div class="container booking-grid">
+    <div data-reveal>
+      <p class="eyebrow">06 / AGENDA</p>
+      <h2 class="display-title">Haz espacio<br /><em>para ti.</em></h2>
+      <p class="body-copy">
+        Cuéntanos qué tienes en mente. Te contactaremos para confirmar tu cita y crear el plan
+        ideal para ti.
+      </p>
+      <div class="booking-social">
+        {
+          socials.map((social) => (
+            <a href={social.href} target="_blank" rel="noreferrer">
+              <span class="social-letter">{social.glyph}</span> {social.label}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <form class="booking-form" data-booking-form data-reveal style="--reveal-delay:160ms">
+      <label>
+        Nombre completo
+        <input type="text" name="name" placeholder="Tu nombre" required />
+      </label>
+
+      <label>
+        ¿Qué servicio te interesa?
+        <select name="service" required>
+          <option value="" disabled selected>Selecciona una opción</option>
+          {services.map((service) => <option value={service.title}>{service.title}</option>)}
+          <option value="Otro">Otro</option>
+        </select>
+      </label>
+
+      <label>
+        Cuéntanos un poco más
+        <textarea name="message" placeholder="Fecha ideal, referencias o preguntas..." rows={3}></textarea>
+      </label>
+
+      <button class="button button-gold" type="submit">
+        Enviar solicitud <ArrowUpRight size={17} />
+      </button>
+    </form>
+  </div>
+</section>

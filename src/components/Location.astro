@@ -1,0 +1,48 @@
+---
+import { ArrowUpRight, Clock3, MapPin } from 'lucide-react'
+
+import { mapsUrl } from '@/data/site'
+---
+
+<section id="ubicacion" class="location section-pad">
+  <div class="container location-grid">
+    <div data-reveal>
+      <p class="eyebrow">05 / ENCUÉNTRANOS</p>
+      <h2 class="display-title">Tu próximo<br /><em>momento empieza aquí.</em></h2>
+
+      <div class="location-detail">
+        <MapPin size={20} />
+        <div>
+          <strong>Vanessa Ruales Studio</strong>
+          <p>Popayán, Cauca<br />Colombia</p>
+        </div>
+      </div>
+
+      <div class="location-detail">
+        <Clock3 size={20} />
+        <div>
+          <strong>Horarios</strong>
+          <p>Lun — Sáb · 9:00 — 19:00</p>
+        </div>
+      </div>
+
+      <a href={mapsUrl} target="_blank" rel="noreferrer" class="button button-outline">
+        Abrir en Google Maps <ArrowUpRight size={17} />
+      </a>
+    </div>
+
+    <a
+      class="map-card"
+      href={mapsUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Ver ubicación en Google Maps"
+      data-reveal
+      style="--reveal-delay:160ms"
+    >
+      <div class="map-lines"></div>
+      <MapPin className="map-pin" size={36} />
+      <span>VER EN MAPS <ArrowUpRight size={14} /></span>
+    </a>
+  </div>
+</section>

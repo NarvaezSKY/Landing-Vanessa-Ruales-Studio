@@ -1,0 +1,84 @@
+---
+import { getImage } from 'astro:assets'
+
+import '@/styles/global.css'
+import '@/styles/alive.css'
+import { logoImage } from '@/data/site'
+
+interface Props {
+  title: string
+  description: string
+}
+
+const { title, description } = Astro.props
+
+const favicon = await getImage({ src: logoImage, width: 64, format: 'png' })
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <!-- Above-the-fold text faces. `crossorigin` is required or the font request
+         is made twice: once here and once by the CSS font matcher. -->
+    <link
+      rel="preload"
+      href="/fonts/dm-sans-normal-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-normal-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-italic-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <link rel="icon" type="image/png" href={favicon.src} />
+    <meta name="generator" content={Astro.generator} />
+    <script is:inline>
+      // Runs before first paint so the reveal styles never flash un-hidden.
+      // Every hiding rule in alive.css is scoped to this class, so a failed
+      // script leaves the page fully visible.
+      document.documentElement.classList.add('has-js')
+
+      // 3s logo intro. First visit only by default; `?intro=1` replays it on
+      // demand (and does not touch the stored flag), `?intro=0` suppresses it.
+      // The flag is written on the same tick the overlay is revealed, so a
+      // failure mid-animation can never replay it.
+      try {
+        const asked = new URLSearchParams(location.search).get('intro')
+        const forced = asked === '1'
+
+        if (forced) {
+          document.documentElement.classList.add('intro-pending', 'intro-forced')
+        } else if (asked !== '0') {
+          const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
+          if (!localStorage.getItem('vrs:intro') && !calm) {
+            localStorage.setItem('vrs:intro', '1')
+            document.documentElement.classList.add('intro-pending')
+          }
+        }
+      } catch {
+        // Private mode or storage blocked: skip the intro rather than risk
+        // replaying it on every single page load.
+      }
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

@@ -1,0 +1,12 @@
+pmOnFail: ignore
+
+minimumReleaseAgeExclude:
+  - astro
+  - '@astrojs/*'
+  - oxc-transform-react
+  - sharp
+
+allowBuilds:
+  esbuild: set this to true or false
+
+enablePrePostScripts: true

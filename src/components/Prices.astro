@@ -1,0 +1,33 @@
+---
+import { ArrowUpRight } from 'lucide-react'
+
+import { prices } from '@/data/site'
+---
+
+<section id="precios" class="price-section section-pad">
+  <div class="container price-grid">
+    <div data-reveal>
+      <p class="eyebrow">03 / INVERSIÓN</p>
+      <h2 class="display-title">Tu tiempo es<br /><em>valioso.</em></h2>
+      <p class="body-copy">
+        Precios transparentes para experiencias hechas a tu medida. Para servicios personalizados,
+        escríbenos.
+      </p>
+      <a href="#citas" class="text-link">
+        Consultar disponibilidad <ArrowUpRight size={16} />
+      </a>
+    </div>
+
+    <div class="price-list" data-reveal style="--reveal-delay:160ms">
+      {
+        prices.map(([name, value]) => (
+          <div class="price-row">
+            <span>{name}</span>
+            <strong>{value}</strong>
+          </div>
+        ))
+      }
+      <p class="price-note">* Los precios pueden variar según largo, volumen y diagnóstico.</p>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,54 @@
+---
+import { Image } from 'astro:assets'
+import { ArrowUpRight } from 'lucide-react'
+
+import { heroShots } from '@/data/site'
+---
+
+<section id="inicio" class="hero">
+  <!-- Slideshow background. All three sit in the DOM from the start so the
+       crossfade is pure class toggling; the script in hero-rotator.ts drives
+       which one is opaque. Decorative, hence aria-hidden. -->
+  <div class="hero-media" data-hero-rotator aria-hidden="true">
+    {
+      heroShots.map((shot, i) => (
+        <Image
+          class:list={[
+            'hero-shot',
+            `hero-shot--${shot.fit}`,
+            shot.box && 'hero-shot--box',
+            shot.box && `hero-shot--box-${shot.box}`,
+            i === 0 && 'is-active',
+          ]}
+          src={shot.src}
+          alt={shot.alt}
+          style={`object-position:${shot.position}${shot.mask ? `;-webkit-mask-image:${shot.mask};mask-image:${shot.mask}` : ''}`}
+          widths={[800, 1200, 1600]}
+          sizes="100vw"
+          format="webp"
+          quality={70}
+          loading={i === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+          /* The first shot is the LCP element and must not queue behind the
+             other two. The rest sit at opacity 0 until their turn, so they are
+             explicitly deprioritised rather than competing for the connection. */
+          fetchpriority={i === 0 ? 'high' : 'low'}
+        />
+      ))
+    }
+  </div>
+
+  <div class="container hero-inner">
+    <p class="eyebrow reveal">POPAYÁN · COLOMBIA</p>
+    <h1 class="hero-title reveal">Tu belleza,<br /><em>tu momento.</em></h1>
+    <p class="hero-copy reveal">
+      Un espacio para volver a ti. Creamos experiencias de belleza que celebran tu esencia, con
+      intención y detalle.
+    </p>
+    <a href="#citas" class="button button-gold reveal">
+      Reserva tu momento <ArrowUpRight size={17} />
+    </a>
+  </div>
+  <div class="hero-side-note">DESDE 2020 <span>—</span> BEAUTY WITH INTENTION</div>
+  <a href="#servicios" class="scroll-cue" aria-label="Ver servicios"><span>SCROLL</span><i></i></a>
+</section>

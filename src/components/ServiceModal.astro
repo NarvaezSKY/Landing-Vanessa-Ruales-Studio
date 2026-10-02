@@ -1,0 +1,53 @@
+---
+import { Image } from 'astro:assets'
+import { ArrowUpRight, X } from 'lucide-react'
+
+import { services } from '@/data/site'
+---
+
+{
+  /* One dialog per service, all rendered up front. The script only flips the
+     `hidden` attribute, so every service stays crawlable and needs no
+     client-side data payload. */
+  services.map((service, i) => (
+    <div
+      class="modal-backdrop"
+      data-service-modal={i}
+      role="dialog"
+      aria-modal="true"
+      aria-label={service.title}
+      hidden
+    >
+      <div class="modal-card">
+        <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">
+          <X />
+        </button>
+        <div class="modal-image">
+          <Image
+            src={service.image}
+            alt={`Detalle de ${service.title}`}
+            widths={[390, 585, 780, 928]}
+            sizes="(max-width: 700px) calc(100vw - 40px), 450px"
+            format="webp"
+            quality={78}
+          />
+        </div>
+        <div class="modal-content">
+          <p class="eyebrow">{service.label}</p>
+          <h2>{service.title}</h2>
+          <a href="#citas" class="button button-gold" data-modal-close>
+            Agendar este servicio <ArrowUpRight size={17} />
+          </a>
+        </div>
+      </div>
+    </div>
+  ))
+}
+
+<style>
+  /* .modal-backdrop sets display:grid, which would otherwise beat the UA
+     rule for the `hidden` attribute and leave all dialogs visible. */
+  .modal-backdrop[hidden] {
+    display: none;
+  }
+</style>

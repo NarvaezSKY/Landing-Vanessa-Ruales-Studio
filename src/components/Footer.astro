@@ -1,0 +1,46 @@
+---
+import { Image } from 'astro:assets'
+import { ArrowUpRight } from 'lucide-react'
+
+import { logoImage, socials } from '@/data/site'
+
+const year = new Date().getFullYear()
+
+// The stylesheet pins the rendered width, so only the aspect ratio matters here.
+// Derived from the source image to stay correct across logo replacements.
+const width = 245
+const height = Math.round(width / (logoImage.width / logoImage.height))
+---
+
+<footer class="footer">
+  <div class="container footer-top" data-reveal>
+    <a href="#inicio" class="footer-logo">
+      <Image
+        src={logoImage}
+        alt="Vanessa Ruales Studio"
+        width={width}
+        height={height}
+        widths={[width, width * 2]}
+        sizes={`${width}px`}
+      />
+    </a>
+
+    <p>BEAUTY WITH INTENTION<br /><span>Popayán · Colombia</span></p>
+
+    <div class="footer-links">
+      {
+        socials.map((social) => (
+          <a href={social.href} target="_blank" rel="noreferrer">
+            {social.label === '@vanessa_ruales_studio2' ? 'Instagram' : 'Facebook'}
+            <ArrowUpRight size={14} />
+          </a>
+        ))
+      }
+    </div>
+  </div>
+
+  <div class="container footer-bottom" data-reveal style="--reveal-delay:120ms">
+    <span>© {year} Vanessa Ruales Studio</span>
+    <span>Hecho con intención.</span>
+  </div>
+</footer>

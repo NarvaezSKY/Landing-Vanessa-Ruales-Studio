@@ -1,0 +1,54 @@
+---
+import { Image } from 'astro:assets'
+import { ArrowUpRight } from 'lucide-react'
+
+import { services } from '@/data/site'
+---
+
+<section id="servicios" class="services section-pad dark-section">
+  <div class="container">
+    <div class="section-heading" data-reveal>
+      <div>
+        <p class="eyebrow">02 / NUESTROS SERVICIOS</p>
+        <h2 class="display-title">El arte de <em>cuidarte.</em></h2>
+      </div>
+      <p class="body-copy heading-copy">
+        Técnica, sensibilidad y productos que respetan tu esencia.
+      </p>
+    </div>
+
+    <div class="service-grid">
+      {
+        services.map((service, i) => (
+          <button
+            type="button"
+            class={`service-card card-${i + 1}`}
+            data-reveal
+            style={`--reveal-delay:${i * 140}ms`}
+            data-service-trigger={i}
+          >
+            <div class="service-image">
+              <Image
+                src={service.image}
+                alt={`Servicio de ${service.title}`}
+                widths={[390, 585, 780, 928]}
+                sizes="(max-width: 700px) 90vw, 33vw"
+                format="webp"
+                quality={78}
+              />
+            </div>
+            <div class="service-info">
+              <div>
+                <span>{service.label}</span>
+                <h3>{service.title}</h3>
+              </div>
+              <span class="round-arrow">
+                <ArrowUpRight size={18} />
+              </span>
+            </div>
+          </button>
+        ))
+      }
+    </div>
+  </div>
+</section>

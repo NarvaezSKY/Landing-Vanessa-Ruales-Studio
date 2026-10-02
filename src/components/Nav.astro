@@ -1,0 +1,66 @@
+---
+import { Image } from 'astro:assets'
+import { ArrowUpRight, Menu, X } from 'lucide-react'
+
+import { logoImage, navLinks } from '@/data/site'
+
+// Derived from the source aspect ratio rather than hardcoded, so replacing the
+// logo file cannot leave a stale width/height pair on the <img>.
+const width = 190
+const height = Math.round(width / (logoImage.width / logoImage.height))
+---
+
+<header class="nav-wrap">
+  <nav class="nav container" aria-label="Navegación principal">
+    <a href="#inicio" class="nav-logo" aria-label="Vanessa Ruales Studio inicio">
+      <Image
+        src={logoImage}
+        alt="Vanessa Ruales Studio"
+        width={width}
+        height={height}
+        widths={[width, width * 2]}
+        sizes={`${width}px`}
+        loading="eager"
+        fetchpriority="high"
+      />
+    </a>
+
+    <div class="nav-links" id="nav-links">
+      {
+        navLinks.map((link) => (
+          <a href={link.href} data-nav-link>
+            {link.label}
+          </a>
+        ))
+      }
+      <a href="#citas" class="nav-cta" data-nav-link>
+        Agendar cita <ArrowUpRight size={15} />
+      </a>
+    </div>
+
+    <button
+      type="button"
+      class="menu-button"
+      aria-expanded="false"
+      aria-controls="nav-links"
+      aria-label="Abrir menú"
+    >
+      <Menu className="icon-open" />
+      <X className="icon-close" />
+    </button>
+  </nav>
+</header>
+
+<style>
+  /* Both icons ship in the HTML; aria-expanded decides which one is visible.
+     Swapping SVG nodes in JS would need a framework for no visual gain. */
+  .menu-button :global(.icon-close) {
+    display: none;
+  }
+  .menu-button[aria-expanded='true'] :global(.icon-open) {
+    display: none;
+  }
+  .menu-button[aria-expanded='true'] :global(.icon-close) {
+    display: block;
+  }
+</style>

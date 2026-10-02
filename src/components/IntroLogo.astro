@@ -1,0 +1,210 @@
+---
+import { Image } from 'astro:assets'
+
+import { logoImage } from '@/data/site'
+
+// Full-viewport logo reveal, shown only on a visitor's first load.
+//
+// Everything here is inert until the inline script in Layout.astro puts
+// `intro-pending` on <html>: the overlay is `visibility: hidden` by default and
+// the flag is set in localStorage on the same tick, so the intro plays exactly
+// once and never flashes for repeat visits, crawlers, or no-JS clients.
+//
+// The timing below is expressed in percentages so the single duration on each
+// `animation` shorthand stays the only thing to retune. The teardown timer in
+// index.astro has to match it.
+---
+
+<div class="intro" data-intro aria-hidden="true">
+  <div class="intro-stage">
+    <!-- The glow lives inside the mark's own wrapper so it tracks the logo
+         exactly. Centring it on the grid instead would offset it by half the
+         rule block, which hangs below the logo. -->
+    <div class="intro-mark-wrap">
+      <span class="intro-glow"></span>
+      <Image
+        class="intro-mark"
+        src={logoImage}
+        alt="Vanessa Ruales Studio"
+        width={420}
+        height={172}
+        widths={[420, 840]}
+        sizes="min(420px, 62vw)"
+        format="webp"
+        quality={90}
+        loading="eager"
+        decoding="sync"
+      />
+    </div>
+    <span class="intro-rule"></span>
+  </div>
+</div>
+
+<style>
+  .intro {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    background: var(--black);
+    /* Hidden until the head script opts in. `visibility` (not `display`) so the
+       overlay can be transitioned, and so it never costs layout work. */
+    visibility: hidden;
+  }
+
+  :global(html.intro-pending) .intro {
+    visibility: visible;
+    animation: intro-veil 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .intro-stage {
+    display: grid;
+    justify-items: center;
+  }
+
+  .intro-mark-wrap {
+    position: relative;
+    width: min(420px, 62vw);
+  }
+
+  .intro-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(760px, 120vw);
+    aspect-ratio: 1;
+    /* Centred with negative margins rather than a translate: the keyframes
+       animate `transform`, and a translate here would be overwritten by it. */
+    margin: calc(min(760px, 120vw) / -2) 0 0 calc(min(760px, 120vw) / -2);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(229, 167, 47, 0.24) 0%,
+      rgba(229, 167, 47, 0.06) 42%,
+      transparent 68%
+    );
+    pointer-events: none;
+  }
+
+  :global(html.intro-pending) .intro-glow {
+    animation: intro-glow 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .intro-mark {
+    position: relative;
+    width: 100%;
+    height: auto;
+    will-change: transform, opacity, filter;
+  }
+
+  :global(html.intro-pending) .intro-mark {
+    animation: intro-mark 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .intro-rule {
+    width: min(300px, 44vw);
+    height: 1px;
+    margin-top: 26px;
+    background: linear-gradient(90deg, transparent, var(--gold) 50%, transparent);
+    transform: scaleX(0);
+    will-change: transform, opacity;
+  }
+
+  :global(html.intro-pending) .intro-rule {
+    animation: intro-rule 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* Veil holds the stage, then lifts over the last 30% so the page underneath
+     has time to settle before the overlay leaves. */
+  @keyframes intro-veil {
+    0% {
+      opacity: 0;
+    }
+    8% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes intro-mark {
+    0% {
+      opacity: 0;
+      transform: scale(0.88);
+      filter: blur(12px);
+    }
+    7% {
+      opacity: 1;
+    }
+    34% {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.04);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes intro-rule {
+    0% {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    11% {
+      opacity: 1;
+    }
+    36% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+    70% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes intro-glow {
+    0% {
+      opacity: 0;
+      transform: scale(0.7);
+    }
+    25% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    70% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.15);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* The head script skips the intro under reduced motion; this covers the
+       case where the flag lands but the media query flips afterwards.
+       `?intro=1` sets .intro-forced and still previews it on purpose. */
+    :global(html.intro-pending:not(.intro-forced)) .intro {
+      display: none;
+    }
+  }
+</style>
