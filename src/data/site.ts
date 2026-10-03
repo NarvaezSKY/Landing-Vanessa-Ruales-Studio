@@ -271,15 +271,49 @@ export const navLinks: NavLink[] = [
   { href: '#ubicacion', label: 'Ubicación' },
 ]
 
+/** WhatsApp number in the form the API expects: country code, no punctuation.
+ *  Written once so the visible link and the booking form cannot drift apart. */
+export const whatsappPhone = '573209407697'
+
+/** How the number is shown to a reader. */
+export const whatsappLabel = '+57 320 940 7697'
+
+/**
+ * Deep link that opens a chat with the studio.
+ *
+ * `api.whatsapp.com` is used rather than the `wa.me` shortener because it is
+ * the documented endpoint for a link on a web page, and `app_absent=0` keeps
+ * the browser tab open when WhatsApp is installed. `text` is left empty for a
+ * plain link and filled in by the booking form, which has to encode it: the
+ * message contains spaces, accents and line breaks.
+ */
+export function whatsappUrl(text = ''): string {
+  const params = new URLSearchParams({
+    phone: whatsappPhone,
+    text,
+    type: 'phone_number',
+    app_absent: '0',
+  })
+  return `https://api.whatsapp.com/send/?${params.toString()}`
+}
+
 export interface SocialLink {
   href: string
   label: string
   glyph: string
+  /** Short name for the spots with no room for a handle, like the footer. */
+  name: string
 }
 
 export const socials: SocialLink[] = [
-  { href: 'https://instagram.com/vanessa_ruales_studio2', label: '@vanessa_ruales_studio2', glyph: '◎' },
-  { href: 'https://facebook.com/vane.ruales.3', label: 'Vanessa Ruales', glyph: 'f' },
+  {
+    href: 'https://instagram.com/vanessa_ruales_studio2',
+    label: '@vanessa_ruales_studio2',
+    glyph: '◎',
+    name: 'Instagram',
+  },
+  { href: 'https://facebook.com/vane.ruales.3', label: 'Vanessa Ruales', glyph: 'f', name: 'Facebook' },
+  { href: whatsappUrl(), label: whatsappLabel, glyph: '💬', name: 'WhatsApp' },
 ]
 
 /* --- SEO helpers ---------------------------------------------------------- */
