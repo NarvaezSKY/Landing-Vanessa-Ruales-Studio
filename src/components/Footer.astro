@@ -14,16 +14,19 @@ const height = Math.round(width / (logoImage.width / logoImage.height))
 
 <footer class="footer">
   <div class="container footer-top" data-reveal>
-    <a href="#inicio" class="footer-logo">
-      <Image
-        src={logoImage}
-        alt="Vanessa Ruales Studio"
-        width={width}
-        height={height}
-        widths={[width, width * 2]}
-        sizes={`${width}px`}
-      />
-    </a>
+    <div class="footer-brand">
+      <a href="#inicio" class="footer-logo">
+        <Image
+          src={logoImage}
+          alt="Vanessa Ruales Studio"
+          width={width}
+          height={height}
+          widths={[width, width * 2]}
+          sizes={`${width}px`}
+        />
+      </a>
+      <span class="footer-brand-year">2026</span>
+    </div>
 
     <p>BEAUTY WITH INTENTION<br /><span>Popayán · Colombia</span></p>
 
