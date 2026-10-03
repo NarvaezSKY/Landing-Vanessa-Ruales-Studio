@@ -194,11 +194,19 @@ import { fitWidths } from '@/lib/images';
 
   @media (max-width: 700px) {
     .modal-card--service {
-      --chrome: 210px;
+      /* The extra 12px over the row gap is the breathing room below the photo,
+         and the reserve grows with it: the card clips its overflow, so space
+         taken by the CTA has to come out of the photo's budget or the button
+         gets pushed out of the card. */
+      --chrome: 222px;
       --cap: 94svh;
       gap: 16px;
       padding: 20px;
       max-height: 94svh;
+    }
+
+    .modal-card--service .button {
+      margin-top: 12px;
     }
 
     .modal-head {
