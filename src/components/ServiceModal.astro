@@ -1,53 +1,226 @@
 ---
-import { Image } from 'astro:assets'
-import { ArrowUpRight, X } from 'lucide-react'
+import { Image } from 'astro:assets';
+import { X, ArrowLeft, ArrowRight } from 'lucide-react';
 
-import { services } from '@/data/site'
+import { services } from '../data/site';
+import { fitWidths } from '@/lib/images';
 ---
 
 {
-  /* One dialog per service, all rendered up front. The script only flips the
-     `hidden` attribute, so every service stays crawlable and needs no
-     client-side data payload. */
-  services.map((service, i) => (
-    <div
-      class="modal-backdrop"
-      data-service-modal={i}
-      role="dialog"
-      aria-modal="true"
-      aria-label={service.title}
-      hidden
-    >
-      <div class="modal-card">
-        <button type="button" class="modal-close" data-modal-close aria-label="Cerrar">
-          <X />
-        </button>
-        <div class="modal-image">
-          <Image
-            src={service.image}
-            alt={`Detalle de ${service.title}`}
-            widths={[390, 585, 780, 928]}
-            sizes="(max-width: 700px) calc(100vw - 40px), 450px"
-            format="webp"
-            quality={78}
-          />
+  // One dialog per photo: the card shows the whole set already, so these are
+  // for looking at a single picture closely, with arrows to move along.
+  services.map((service, i) =>
+    service.images.map((image, n) => {
+      const total = service.images.length;
+      const prev = n > 0 ? `${i}-${n - 1}` : undefined;
+      const next = n < total - 1 ? `${i}-${n + 1}` : undefined;
+
+      return (
+        <div
+          class="modal-backdrop"
+          data-service-modal={`${i}-${n}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${service.title}, foto ${n + 1} de ${total}`}
+          hidden
+        >
+          <div class="modal-card modal-card--service">
+            <button class="modal-close" data-modal-close aria-label="Cerrar">
+              <X size={17} />
+            </button>
+
+            <div class="modal-head">
+              <div>
+                <p class="eyebrow">{service.label}</p>
+                <h2>{service.title}</h2>
+                <p class="modal-figure-count">
+                  Foto {n + 1} de {total}
+                </p>
+              </div>
+            </div>
+
+            <div class="modal-figure">
+              <Image
+                src={image}
+                alt={`${service.title} — foto ${n + 1}`}
+                widths={fitWidths([780, 1170, 1560], image.width)}
+                sizes="(max-width: 700px) 92vw, 60vw"
+                format="webp"
+                quality={82}
+              />
+
+              {/* Over the photo, the way an Instagram viewer does it. */}
+              {prev && (
+                <button
+                  class="modal-step modal-step--prev"
+                  data-modal-step={prev}
+                  aria-label="Foto anterior"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+              )}
+              {next && (
+                <button
+                  class="modal-step modal-step--next"
+                  data-modal-step={next}
+                  aria-label="Foto siguiente"
+                >
+                  <ArrowRight size={18} />
+                </button>
+              )}
+            </div>
+
+            <a href="#citas" class="button button-gold" data-modal-close>
+              Agendar este servicio
+            </a>
+          </div>
         </div>
-        <div class="modal-content">
-          <p class="eyebrow">{service.label}</p>
-          <h2>{service.title}</h2>
-          <a href="#citas" class="button button-gold" data-modal-close>
-            Agendar este servicio <ArrowUpRight size={17} />
-          </a>
-        </div>
-      </div>
-    </div>
-  ))
+      );
+    })
+  )
 }
 
 <style>
-  /* .modal-backdrop sets display:grid, which would otherwise beat the UA
-     rule for the `hidden` attribute and leave all dialogs visible. */
-  .modal-backdrop[hidden] {
-    display: none;
+  /* The middle row is what holds the photo. It is sized by the photo itself,
+     so the image stays in the flow -- an absolutely positioned one contributes
+     no height, the row collapses to zero and the modal opens showing only the
+     text and the CTA.
+     `max-height` in percentage could not resolve against that row either, so a
+     portrait stayed full width, grew past the box and got clipped at the top.
+     Viewport units are definite: both max-width and max-height apply and the
+     aspect ratio is preserved, so the whole photo always fits. The reserve
+     leaves room for the header, the CTA and the gaps. */
+  .modal-card--service {
+    --chrome: 270px;
+    --cap: 92svh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 20px;
+    width: min(1080px, 100%);
+    max-height: 92vh;
+    max-height: var(--cap);
+    padding: 30px;
+    overflow: hidden;
+  }
+
+  .modal-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-right: 56px;
+  }
+
+  .modal-head h2 {
+    font: 400 40px/1.1 'Playfair Display', serif;
+    letter-spacing: -0.02em;
+    margin: 10px 0 0;
+  }
+
+  .modal-figure-count {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 12px 0 0;
+  }
+
+  .modal-figure {
+    position: relative;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    background: #0b0b0a;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  /* contain, not cover, so a portrait is never cut: it scales down to fit and
+     letterboxes instead. */
+  .modal-figure img {
+    max-width: 100%;
+    max-height: max(150px, calc(var(--cap) - var(--chrome)));
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .modal-step {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    border: 1px solid rgba(255, 249, 239, 0.28);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    color: #fff;
+    background: rgba(11, 11, 10, 0.45);
+    transition: background 0.25s, color 0.25s, border-color 0.25s,
+      margin-left 0.25s, margin-right 0.25s;
+  }
+
+  .modal-step--prev {
+    left: 14px;
+  }
+
+  .modal-step--next {
+    right: 14px;
+  }
+
+  .modal-step:hover,
+  .modal-step:focus-visible {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--black);
+  }
+
+  .modal-step--prev:hover,
+  .modal-step--prev:focus-visible {
+    margin-left: -3px;
+  }
+
+  .modal-step--next:hover,
+  .modal-step--next:focus-visible {
+    margin-right: -3px;
+  }
+
+  .modal-card--service .button {
+    justify-self: start;
+  }
+
+  @media (max-width: 700px) {
+    .modal-card--service {
+      --chrome: 210px;
+      --cap: 94svh;
+      gap: 16px;
+      padding: 20px;
+      max-height: 94svh;
+    }
+
+    .modal-head {
+      padding-right: 48px;
+    }
+
+    .modal-head h2 {
+      font-size: 28px;
+    }
+
+    .modal-step {
+      width: 38px;
+      height: 38px;
+      margin-top: -19px;
+    }
+
+    .modal-step--prev {
+      left: 10px;
+    }
+
+    .modal-step--next {
+      right: 10px;
+    }
   }
 </style>

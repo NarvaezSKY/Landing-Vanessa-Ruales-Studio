@@ -3,12 +3,14 @@ import { Image } from 'astro:assets'
 import { ArrowUpRight } from 'lucide-react'
 
 import { heroShots } from '@/data/site'
+import { fitWidths } from '@/lib/images'
 ---
 
 <section id="inicio" class="hero">
-  <!-- Slideshow background. All three sit in the DOM from the start so the
+  <!-- Slideshow background. Every shot sits in the DOM from the start so the
        crossfade is pure class toggling; the script in hero-rotator.ts drives
-       which one is opaque. Decorative, hence aria-hidden. -->
+       which one is opaque, and it reads the count off the DOM. Decorative,
+       hence aria-hidden. -->
   <div class="hero-media" data-hero-rotator aria-hidden="true">
     {
       heroShots.map((shot, i) => (
@@ -23,14 +25,14 @@ import { heroShots } from '@/data/site'
           src={shot.src}
           alt={shot.alt}
           style={`object-position:${shot.position}${shot.mask ? `;-webkit-mask-image:${shot.mask};mask-image:${shot.mask}` : ''}`}
-          widths={[800, 1200, 1600]}
+          widths={fitWidths(shot.widths ?? [800, 1200, 1600], shot.src.width)}
           sizes="100vw"
           format="webp"
           quality={70}
           loading={i === 0 ? 'eager' : 'lazy'}
           decoding="async"
           /* The first shot is the LCP element and must not queue behind the
-             other two. The rest sit at opacity 0 until their turn, so they are
+             rest. The others sit at opacity 0 until their turn, so they are
              explicitly deprioritised rather than competing for the connection. */
           fetchpriority={i === 0 ? 'high' : 'low'}
         />

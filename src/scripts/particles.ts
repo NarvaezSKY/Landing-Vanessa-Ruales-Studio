@@ -28,16 +28,20 @@ const CONTAINER_MAX = 1180 // .container max-width in global.css
 const GUTTER_MIN = 16 // below this the side margin is too thin to bother
 const PARALLAX_BAND = 140 // vertical slack so wrapping is never visible
 const SPRITE = 32
-const MAX_MOTES = 80
+const MAX_MOTES = 44
 const FRAME_MS = 1000 / 30
+const SCROLL_IDLE_MS = 150
 
 if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   const motes: Mote[] = []
   let width = 0
   let height = 0
   let frame = 0
-  let running = true
+  let running = false
   let lastDraw = 0
+  let scrollIdleTimer = 0
+  let scrolling = false
+  let blocked = false
 
   const sprite = document.createElement('canvas')
   sprite.width = SPRITE
@@ -89,8 +93,14 @@ if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matc
     }
   }
 
+  /**
+   * Motes are soft glows a few pixels across, so the extra resolution of a 2x
+   * backing store buys nothing visible while making the full-viewport clearRect
+   * up to four times more expensive. At 120Hz the frame budget is 8.3ms and
+   * that clear lands squarely on scroll frames.
+   */
   const resize = () => {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    const dpr = 1
     width = window.innerWidth
     height = window.innerHeight
     canvas.width = Math.round(width * dpr)
@@ -103,20 +113,17 @@ if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matc
     // Narrow viewports have no gutter, hence no motes: park the loop instead of
     // spinning rAF against an empty canvas. Growing past the breakpoint again
     // has to explicitly restart it, which the old resize path never did.
-    if (!motes.length) stop()
-    else if (!running) {
-      running = true
-      start()
-    }
+    if (isActive()) start()
+    else stop()
   }
 
   const draw = (now: number) => {
     if (!running) return
 
-    // rAF still fires at 60Hz, but the expensive half of a frame (a viewport-
-    // sized clearRect plus up to 80 drawImage calls) only runs at ~30fps. The
-    // motes drift a fraction of a pixel per frame and the twinkle is slow, so
-    // the halved cadence is invisible while saving half the fill rate.
+    // rAF fires at the display rate, but the expensive half of a frame (a
+    // viewport-sized clearRect plus one drawImage per mote) only runs at
+    // ~30fps. The motes drift a fraction of a pixel per frame and the twinkle is
+    // slow, so the halved cadence is invisible while saving half the fill rate.
     if (now - lastDraw < FRAME_MS) {
       frame = requestAnimationFrame(draw)
       return
@@ -153,24 +160,43 @@ if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matc
     frame = requestAnimationFrame(draw)
   }
 
+  const isActive = () => !blocked && !scrolling && motes.length > 0
+
   const start = () => {
-    if (!running) return
+    if (running || !isActive()) return
+    running = true
     lastDraw = performance.now()
     frame = requestAnimationFrame(draw)
   }
+
   const stop = () => {
+    if (!running) return
     running = false
     cancelAnimationFrame(frame)
   }
 
+  /**
+   * The canvas sits over the whole viewport, so every scroll frame has to
+   * composite it. The motes drift a fraction of a pixel per frame and the
+   * scroll-linked offset is imperceptible mid-scroll, so the loop parks while
+   * the user is scrolling and picks up again once they settle.
+   */
+  const onScroll = () => {
+    if (!motes.length || blocked) return
+    scrolling = true
+    stop()
+    window.clearTimeout(scrollIdleTimer)
+    scrollIdleTimer = window.setTimeout(() => {
+      scrolling = false
+      start()
+    }, SCROLL_IDLE_MS)
+  }
+
   // No point burning frames on a background tab.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stop()
-    } else {
-      running = true
-      start()
-    }
+    blocked = document.hidden
+    if (isActive()) start()
+    else stop()
   })
 
   // A service dialog covers the page with a near-opaque veil, so the motes are
@@ -178,13 +204,12 @@ if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matc
   // the dialog's own paint work.
   document.addEventListener('modal', (event) => {
     const { open } = (event as CustomEvent<{ open: boolean }>).detail
-    if (open) {
-      stop()
-    } else if (!document.hidden) {
-      running = true
-      start()
-    }
+    blocked = open
+    if (isActive()) start()
+    else stop()
   })
+
+  window.addEventListener('scroll', onScroll, { passive: true })
 
   let resizeTimer = 0
   window.addEventListener('resize', () => {
@@ -193,5 +218,4 @@ if (canvas && ctx && !window.matchMedia('(prefers-reduced-motion: reduce)').matc
   })
 
   resize()
-  start()
 }

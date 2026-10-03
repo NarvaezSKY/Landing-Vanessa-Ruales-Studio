@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets'
 
 import { portraitImage } from '@/data/site'
+import { fitWidths } from '@/lib/images'
 ---
 
 <section id="conocenos" class="about dark-section section-pad">
@@ -10,7 +11,7 @@ import { portraitImage } from '@/data/site'
       <Image
         src={portraitImage}
         alt="Vanessa Ruales, fundadora del estudio"
-        widths={[450, 590, 800, 1000]}
+        widths={fitWidths([450, 590, 800, 1000], portraitImage.width)}
         sizes="(max-width: 700px) 90vw, 45vw"
         format="webp"
         quality={80}

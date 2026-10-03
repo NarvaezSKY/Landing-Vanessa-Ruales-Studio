@@ -1,48 +1,137 @@
 ---
 import { ArrowUpRight, Clock3, MapPin } from 'lucide-react'
 
-import { mapsUrl } from '@/data/site'
+import { address, hours, mapsEmbedUrl, mapsUrl } from '@/data/site'
+import { evaluate, formatTime, getStudioNow } from '@/lib/hours'
+
+// Rendered at build time so the tag is correct on first paint and there is no
+// layout shift; the script below only keeps it fresh.
+const status = evaluate(hours)
+const todayIndex = getStudioNow().dayIndex
+const state = status.isOpen ? 'open' : 'closed'
 ---
 
-<section id="ubicacion" class="location section-pad">
+<section id="ubicacion" class="location section-pad" data-hours={JSON.stringify(hours)}>
   <div class="container location-grid">
     <div data-reveal>
       <p class="eyebrow">05 / ENCUÉNTRANOS</p>
       <h2 class="display-title">Tu próximo<br /><em>momento empieza aquí.</em></h2>
 
-      <div class="location-detail">
+      <address class="location-detail">
         <MapPin size={20} />
         <div>
           <strong>Vanessa Ruales Studio</strong>
-          <p>Popayán, Cauca<br />Colombia</p>
+          <p>{address}<br />Colombia</p>
         </div>
-      </div>
-
-      <div class="location-detail">
-        <Clock3 size={20} />
-        <div>
-          <strong>Horarios</strong>
-          <p>Lun — Sáb · 9:00 — 19:00</p>
-        </div>
-      </div>
+      </address>
 
       <a href={mapsUrl} target="_blank" rel="noreferrer" class="button button-outline">
         Abrir en Google Maps <ArrowUpRight size={17} />
       </a>
     </div>
 
-    <a
-      class="map-card"
-      href={mapsUrl}
-      target="_blank"
-      rel="noreferrer"
-      aria-label="Ver ubicación en Google Maps"
-      data-reveal
-      style="--reveal-delay:160ms"
-    >
-      <div class="map-lines"></div>
-      <MapPin className="map-pin" size={36} />
-      <span>VER EN MAPS <ArrowUpRight size={14} /></span>
-    </a>
+    <div class="location-media" data-reveal style="--reveal-delay:160ms">
+      <div class="map-card">
+        <iframe
+          class="map-frame"
+          src={mapsEmbedUrl}
+          title={`Mapa de Vanessa Ruales Studio — ${address}`}
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen></iframe>
+
+        {/* The embed is centred on the studio coordinates, so the middle of the
+            frame *is* the spot. A zero-size anchor sits exactly on it and the
+            gold pin is drawn from there, tip down. */}
+        <span class="map-pin" aria-hidden="true"></span>
+
+        <div class="open-tag open-tag--overlay" data-open-tag data-state={state}>
+          <span class="open-tag__dot" aria-hidden="true"></span>
+          <p class="open-tag__text">
+            <b data-open-label role="status" aria-live="polite">{status.label}</b>
+            <span data-open-next>{status.next}</span>
+          </p>
+        </div>
+
+        <a class="map-card__cta" href={mapsUrl} target="_blank" rel="noreferrer">
+          VER EN MAPS <ArrowUpRight size={14} />
+        </a>
+      </div>
+
+      <div class="location-detail location-detail--hours">
+        <Clock3 size={20} />
+        <div class="hours">
+          <strong>Horarios</strong>
+
+          <ul class="hours-list" data-hours-list>
+            {
+              hours.map((entry, i) => (
+                <li class:list={['hours-row', { 'is-today': i === todayIndex }]}>
+                  <span class="hours-day">
+                    {entry.day}
+                    {/* Rendered on every row and revealed by `.is-today`, so the
+                        badge survives the day rolling over at midnight without a
+                        reload. */}
+                    <b class="hours-now" data-today-state={status.isOpen ? 'Abierto' : 'Cerrado'}>
+                      {status.isOpen ? 'Abierto' : 'Cerrado'}
+                    </b>
+                  </span>
+                  <span class="hours-time">
+                    {entry.open
+                      ? `${formatTime(entry.open)} — ${formatTime(entry.close!)}`
+                      : 'Cerrado'}
+                  </span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
+
+<script>
+  import { evaluate, getStudioNow, type DayHours } from '@/lib/hours'
+
+  // `hours` is read from the DOM rather than imported from `@/data/site`: that
+  // module also imports the hero/service images, and a client-side import would
+  // drag those asset URLs into the page bundle.
+  const section = document.querySelector<HTMLElement>('#ubicacion[data-hours]')
+  const hours: DayHours[] = JSON.parse(section?.dataset.hours ?? '[]')
+
+  const render = () => {
+    const status = evaluate(hours)
+    const state = status.isOpen ? 'open' : 'closed'
+
+    document.querySelectorAll<HTMLElement>('[data-open-tag]').forEach((tag) => {
+      tag.dataset.state = state
+    })
+    document.querySelectorAll<HTMLElement>('[data-open-label]').forEach((el) => {
+      if (el.textContent !== status.label) el.textContent = status.label
+    })
+    document.querySelectorAll<HTMLElement>('[data-open-next]').forEach((el) => {
+      if (el.textContent !== status.next) el.textContent = status.next
+    })
+
+    const today = getStudioNow().dayIndex
+    const rows = document.querySelectorAll<HTMLElement>('[data-hours-list] .hours-row')
+    rows.forEach((row, i) => row.classList.toggle('is-today', i === today))
+
+    // Only the row marked `.is-today` shows this, so only that one needs writing.
+    const word = status.isOpen ? 'Abierto' : 'Cerrado'
+    rows.forEach((row, i) => {
+      if (i !== today) return
+      const badge = row.querySelector<HTMLElement>('[data-today-state]')
+      if (!badge) return
+      badge.dataset.state = status.isOpen ? 'open' : 'closed'
+      if (badge.textContent?.trim() !== word) badge.textContent = word
+    })
+  }
+
+  render()
+  // Re-evaluate so the tag flips at 08:00 / 18:30 without a reload. Only the
+  // text nodes are touched, and only when they actually change, so this never
+  // spams a screen reader announcing the same status every minute.
+  setInterval(render, 60_000)
+</script>

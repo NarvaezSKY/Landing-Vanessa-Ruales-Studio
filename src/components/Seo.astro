@@ -1,0 +1,123 @@
+---
+import {
+  siteUrl,
+  postalAddress,
+  coords,
+  mapsUrl,
+  openingHoursSchema,
+  priceRange,
+  prices,
+  areaServed,
+  socials,
+} from '@/data/site';
+
+interface Props {
+  title: string
+  description: string
+  /** Absolute URL of a shareable preview image. */
+  image: string
+  imageAlt: string
+}
+
+const { title, description, image, imageAlt } = Astro.props
+
+const page = `${siteUrl}/`
+
+const profiles = socials.map((s) => s.href)
+
+/**
+ * One graph instead of several loose blocks: the shop as `BeautySalon`, the
+ * site as its `WebSite`, the page, and the practitioner as a `Person`. Nodes
+ * point at each other by `@id`, so the brand and the shop cannot be read as two
+ * unrelated things.
+ */
+const graph = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'BeautySalon',
+      '@id': `${siteUrl}/#studio`,
+      name: 'Vanessa Ruales Studio',
+      alternateName: ['Vanessa Ruales', 'Vanessa Ruales Studio Popayán'],
+      description,
+      url: page,
+      image: [image],
+      address: { '@type': 'PostalAddress', ...postalAddress },
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: coords.lat,
+        longitude: coords.lng,
+      },
+      hasMap: mapsUrl,
+      openingHoursSpecification: openingHoursSchema,
+      priceRange,
+      currenciesAccepted: 'COP',
+      paymentAccepted: 'Efectivo, transferencia, Nequi, Daviplata',
+      sameAs: profiles,
+      areaServed,
+      // Mirrors the visible price list, so the long tail ("manicure
+      // semipermanente Popayán", "depilación axilar Popayán") has something to
+      // match. Read from `prices`, so it cannot drift out of sync.
+      makesOffer: prices.flatMap((group) =>
+        group.items.map(([name, value]) => ({
+          '@type': 'Offer',
+          itemOffered: { '@type': 'Service', name: `${name} — ${group.label}` },
+          price: Number(value.replace(/[^\d]/g, '')),
+          priceCurrency: 'COP',
+        }))
+      ),
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      url: page,
+      name: 'Vanessa Ruales Studio',
+      inLanguage: 'es-CO',
+      publisher: { '@id': `${siteUrl}/#studio` },
+    },
+    {
+      '@type': 'Person',
+      '@id': `${siteUrl}/#vanessa-ruales`,
+      name: 'Vanessa Ruales',
+      jobTitle: 'Estilista y manicurista',
+      worksFor: { '@id': `${siteUrl}/#studio` },
+      sameAs: profiles,
+    },
+    {
+      '@type': 'WebPage',
+      '@id': `${page}#webpage`,
+      url: page,
+      name: title,
+      description,
+      inLanguage: 'es-CO',
+      isPartOf: { '@id': `${siteUrl}/#website` },
+      about: { '@id': `${siteUrl}/#studio` },
+      primaryImageOfPage: image,
+    },
+  ],
+}
+---
+
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<link rel="canonical" href={page} />
+
+<meta name="geo.region" content="CO-CAU" />
+<meta name="geo.placename" content={postalAddress.addressLocality} />
+<meta name="geo.position" content={`${coords.lat};${coords.lng}`} />
+<meta name="ICBM" content={`${coords.lat}, ${coords.lng}`} />
+
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Vanessa Ruales Studio" />
+<meta property="og:locale" content="es_CO" />
+<meta property="og:url" content={page} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={image} />
+<meta property="og:image:alt" content={imageAlt} />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={image} />
+
+<script type="application/ld+json" set:html={JSON.stringify(graph)} is:inline />

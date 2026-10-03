@@ -15,8 +15,8 @@ import Services from '@/components/Services.astro'
 ---
 
 <Layout
-  title="Vanessa Ruales Studio | Beauty with intention"
-  description="Un espacio para volver a ti. Servicios de hair styling, manicure y makeup en Popayán."
+  title="Vanessa Ruales Studio | Salón de Belleza en Popayán"
+  description="Vanessa Ruales Studio — salón de belleza en Popayán, Cauca. Manicure, semipermanente, poly gel, keratina, facial, depilación, pestañas y maquillaje."
 >
   <main class="site-shell">
     <Nav />
@@ -76,6 +76,11 @@ import Services from '@/components/Services.astro'
     // of listening to scroll and comparing offsets) means the toggle fires once
     // per boundary crossing rather than once per scroll event.
     const navWrap = document.querySelector<HTMLElement>('.nav-wrap')
+    // The mobile panel is positioned inside the nav, so pinning the nav
+    // re-anchors it and an open menu appears to teleport. Declared here and
+    // filled in below, once setMenuOpen exists.
+    let collapseMenu: (() => void) | null = null
+
     const hero = document.querySelector<HTMLElement>('.hero')
 
     if (navWrap && hero) {
@@ -83,7 +88,11 @@ import Services from '@/components/Services.astro'
         ([entry]) => {
           // `bottom < 0` guards the load-with-a-hash case: the hero can start
           // out below the viewport without meaning we scrolled past it.
-          navWrap.classList.toggle('is-stuck', !entry.isIntersecting && entry.boundingClientRect.bottom < 0)
+          const stuck = !entry.isIntersecting && entry.boundingClientRect.bottom < 0
+          navWrap.classList.toggle('is-stuck', stuck)
+          // Safety net for the cases that skip the scroll tick: a hash jump
+          // straight to the footer, or a resize that re-anchors the nav.
+          if (stuck) collapseMenu?.()
         },
         { threshold: 0 },
       ).observe(hero)
@@ -100,9 +109,22 @@ import Services from '@/components/Services.astro'
         navLinks.classList.toggle('is-open', open)
       }
 
+      collapseMenu = () => setMenuOpen(false)
+
       menuButton.addEventListener('click', () => {
         setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true')
       })
+
+      // Scrolling with the panel open dragged it along and then re-anchored it
+      // to the stuck nav, so it popped into place with no transition. Collapse
+      // on the first scroll tick instead: that lands well before the nav pins,
+      // so the opacity/transform transition plays out while the panel is still
+      // where the user opened it.
+      window.addEventListener(
+        'scroll',
+        () => menuButton.getAttribute('aria-expanded') === 'true' && setMenuOpen(false),
+        { passive: true },
+      )
 
       navLinks.addEventListener('click', (event) => {
         if ((event.target as Element).closest('[data-nav-link]')) setMenuOpen(false)
@@ -119,6 +141,19 @@ import Services from '@/components/Services.astro'
     // re-scan the DOM on every keypress.
     let openModal: HTMLElement | null = null
     let lastTrigger: HTMLElement | null = null
+    // The exit animation is async, so a second Escape (or a fast reopen) would
+    // otherwise hide the dialog mid-flight and strand the class on it. Every
+    // close takes a token; bumping it orphans any settle still in the queue.
+    let closeToken = 0
+    let closingModal: HTMLElement | null = null
+    // Set when a dialog is closed by one of its own in-page CTAs. The default
+    // jump cannot be left to the browser: it would fire while the dialog is
+    // still mounted and the body is scroll-locked, and the focus restore on
+    // close would then scroll straight back up to the thumbnail.
+    let pendingJump: HTMLElement | null = null
+
+    const prefersReducedMotion = () =>
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     // The motes drift behind an almost-opaque veil where nobody can see them,
     // so the 30fps rAF loop is pure cost while a dialog is open.
@@ -127,18 +162,84 @@ import Services from '@/components/Services.astro'
     }
 
     const closeModal = () => {
-      if (!openModal) return
-      openModal.hidden = true
-      openModal = null
-      document.body.style.removeProperty('overflow')
-      lastTrigger?.focus()
-      lastTrigger = null
-      syncParticles(false)
+      if (!openModal || closingModal) return
+      const modal = openModal
+      const token = ++closeToken
+      closingModal = modal
+
+      const settle = () => {
+        if (token !== closeToken) return
+        modal.classList.remove('is-closing')
+        modal.hidden = true
+        if (openModal === modal) openModal = null
+        closingModal = null
+        // A different dialog may already be up by now; whoever is last out owns
+        // the scroll lock and the focus restore.
+        if (!openModal) {
+          document.body.style.removeProperty('overflow')
+          // The jump, when there is one, replaces the focus restore: the
+          // destination should own focus now, and focusing the thumbnail is
+          // exactly what dragged the page back up.
+          const jump = pendingJump
+          pendingJump = null
+          if (jump) {
+            // The lock is off, so the scroll is allowed to stick this time.
+            jump.scrollIntoView({
+              behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+              block: 'start',
+            })
+            // Hand the keyboard to the destination without letting focus cause
+            // a second, competing scroll.
+            jump.setAttribute('tabindex', '-1')
+            jump.focus({ preventScroll: true })
+          } else {
+            lastTrigger?.focus()
+          }
+          lastTrigger = null
+          syncParticles(false)
+        }
+      }
+
+      // Honour the OS setting: the animation is decoration, so with it off there
+      // is nothing to wait for.
+      if (prefersReducedMotion()) {
+        settle()
+        return
+      }
+
+      // `hidden` is display:none, which kills animations outright, so the exit
+      // has to play on the still-visible dialog and only then unmount.
+      modal.classList.add('is-closing')
+      // The card's own animation ends first and bubbles up, so match on the
+      // backdrop itself; the timer covers the case where it never fires.
+      modal.addEventListener('animationend', (event) => event.target === modal && settle(), {
+        once: true,
+      })
+      window.setTimeout(settle, 400)
     }
 
     const showModal = (modal: HTMLElement, trigger: HTMLElement) => {
+      // `openModal` is single-slot, so a dialog left up from any earlier path
+      // would become unreachable: Escape and the backdrop both route through
+      // closeModal and would only ever close the tracked one. Enforce the
+      // invariant instead of relying on the backdrop to prevent it.
+      if (openModal && openModal !== modal) closeModal()
+      // Reopening the dialog that is mid-exit: cancel that exit, or its pending
+      // settle would slam it shut again a frame after it was shown.
+      else if (closingModal === modal) {
+        closeToken++
+        closingModal = null
+        modal.classList.remove('is-closing')
+      }
       lastTrigger = trigger
+      // A jump left over from a close that is still animating would fire behind
+      // this dialog.
+      pendingJump = null
       modal.hidden = false
+      // Must run *after* the unhide: scrollTop is a silent no-op on a
+      // display:none box, and the browser restores the previous offset once the
+      // dialog is laid out again. Long lists would otherwise reopen mid-list.
+      modal.querySelectorAll<HTMLElement>('[data-modal-scroll]').forEach((el) => (el.scrollTop = 0))
       openModal = modal
       document.body.style.overflow = 'hidden'
       modal.querySelector<HTMLElement>('[data-modal-close]')?.focus()
@@ -154,16 +255,15 @@ import Services from '@/components/Services.astro'
 
     // The modal photos are `loading="lazy"` inside a display:none dialog, so
     // they stay out of the page load entirely. That means an open would stall
-    // on a ~50KB fetch. Hovering or tabbing onto a card is intent, so flip the
-    // image to eager then -- by the time the click lands it is usually decoded,
-    // and the shared width ladder means the card's own file is often reused.
+    // on a fetch. Hovering or tabbing onto a thumbnail is intent, so flip the
+    // image to eager then -- by the time the click lands it is usually decoded.
+    // Each dialog now holds a single photo, so this stays cheap; the two
+    // siblings go along with it to keep the arrows instant.
     const warm = (modal: HTMLElement) => {
-      modal
-        .querySelectorAll<HTMLImageElement>('img[loading="lazy"]')
-        .forEach((img) => {
-          img.loading = 'eager'
-          img.decode?.().catch(() => {})
-        })
+      const img = modal.querySelector<HTMLImageElement>('img[loading="lazy"]')
+      if (!img) return
+      img.loading = 'eager'
+      img.decode?.().catch(() => {})
     }
 
     document.querySelectorAll<HTMLElement>('[data-service-trigger]').forEach((trigger) => {
@@ -176,13 +276,56 @@ import Services from '@/components/Services.astro'
       trigger.addEventListener('click', () => showModal(modal, trigger))
     })
 
+    // Prev/next inside a category. `lastTrigger` is passed straight through so
+    // closing still returns focus to the thumbnail that opened the gallery.
+    // The arrows sitting inside the dialog being left.
+    const modalStepTargets = (btn: HTMLElement) =>
+      [...btn.closest<HTMLElement>('[data-service-modal]')!.querySelectorAll<HTMLElement>(
+        '[data-modal-step]'
+      )].map((s) => modals.get(s.dataset.modalStep!)).filter((m): m is HTMLElement => !!m)
+
+    document.querySelectorAll<HTMLElement>('[data-modal-step]').forEach((btn) => {
+      const key = btn.dataset.modalStep
+      const target = key ? modals.get(key) : undefined
+      if (!target) return
+
+      btn.addEventListener('click', () => {
+        warm(target)
+        modalStepTargets(btn).forEach(warm)
+        showModal(target, lastTrigger ?? btn)
+      })
+    })
+
     document.querySelectorAll<HTMLElement>('[data-service-modal]').forEach((modal) => {
       modal.addEventListener('click', (event) => {
         const target = event.target as Element
         // Close on backdrop click or on the close/CTA affordances. Clicks that
         // land inside the card are ignored.
-        if (target === modal || target.closest('[data-modal-close]')) closeModal()
+if (target === modal || target.closest('[data-modal-close]')) closeModal()
+    })
+
+    // The "agendar este servicio" CTA inside a dialog. Handing the jump to
+    // closeModal lets it happen once the dialog is out and the scroll lock is
+    // released; letting the browser do it natively raced both of those and the
+    // page ended up back where it started. Covers the price list too.
+    document.querySelectorAll<HTMLAnchorElement>('[data-modal-close][href^="#"]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        const target = document.querySelector<HTMLElement>(link.getAttribute('href')!)
+        if (!target) return
+        event.preventDefault()
+        // Nothing mounted means closeModal would bail out and leave the pending
+        // jump to leak into the next dialog that closes.
+        if (!openModal) {
+          target.scrollIntoView({
+            behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+            block: 'start',
+          })
+          return
+        }
+        pendingJump = target
+        closeModal()
       })
+    })
     })
 
     // The dialogs claim aria-modal, but the page behind is still focusable, so

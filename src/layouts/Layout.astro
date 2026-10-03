@@ -3,7 +3,8 @@ import { getImage } from 'astro:assets'
 
 import '@/styles/global.css'
 import '@/styles/alive.css'
-import { logoImage } from '@/data/site'
+import { logoImage, portraitImage, siteUrl } from '@/data/site'
+import Seo from '@/components/Seo.astro'
 
 interface Props {
   title: string
@@ -13,15 +14,38 @@ interface Props {
 const { title, description } = Astro.props
 
 const favicon = await getImage({ src: logoImage, width: 64, format: 'png' })
+
+// Open Graph needs absolute URLs or WhatsApp and Facebook drop the preview
+// entirely. Calling getImage here is also what emits the file, so the
+// reference stays on the optimized pipeline instead of shipping a raw copy
+// out of public/.
+const social = await getImage({
+  src: portraitImage,
+  width: 1200,
+  height: 630,
+  fit: 'cover',
+  position: 'center',
+  format: 'jpeg',
+  quality: 82,
+})
+
+const socialImage = new URL(social.src, siteUrl).href
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang="es-CO">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+
+    <Seo
+      title={title}
+      description={description}
+      image={socialImage}
+      imageAlt="Vanessa Ruales Studio — salón de belleza en Popayán"
+    />
 
     <!-- Above-the-fold text faces. `crossorigin` is required or the font request
          is made twice: once here and once by the CSS font matcher. -->

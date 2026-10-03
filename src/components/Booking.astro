@@ -1,7 +1,11 @@
 ---
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, Search } from 'lucide-react'
 
-import { services, socials } from '@/data/site'
+import { prices, socials } from '@/data/site'
+
+const serviceOptions = prices.flatMap((group) =>
+  group.items.map(([name, value]) => ({ group: group.label, name, value })),
+)
 ---
 
 <section id="citas" class="booking dark-section section-pad">
@@ -30,18 +34,88 @@ import { services, socials } from '@/data/site'
         <input type="text" name="name" placeholder="Tu nombre" required />
       </label>
 
-      <label>
-        ¿Qué servicio te interesa?
-        <select name="service" required>
-          <option value="" disabled selected>Selecciona una opción</option>
-          {services.map((service) => <option value={service.title}>{service.title}</option>)}
-          <option value="Otro">Otro</option>
-        </select>
-      </label>
+      <div class="field" data-service-picker>
+        <span class="field__label" id="service-picker-label">¿Qué servicio te interesa?</span>
+        <input type="hidden" name="service" data-service-value />
+
+        <button
+          type="button"
+          class="picker__trigger"
+          data-picker-trigger
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="service-picker-panel"
+          aria-labelledby="service-picker-label picker-trigger-text"
+          data-empty="true"
+        >
+          <span id="picker-trigger-text" data-picker-text>Selecciona un servicio</span>
+          <ChevronDown size={17} aria-hidden="true" />
+        </button>
+
+        <p class="picker__error" data-picker-error hidden>Elige un servicio para continuar.</p>
+
+        <div class="picker__panel" id="service-picker-panel" data-picker-panel hidden>
+          <div class="picker__searchWrap">
+            <Search size={15} aria-hidden="true" />
+            <input
+              type="search"
+              class="picker__search"
+              data-picker-search
+              placeholder="Buscar servicio..."
+              aria-label="Buscar un servicio"
+              autocomplete="off"
+            />
+          </div>
+
+          <p class="picker__count" data-picker-count aria-live="polite">
+            {serviceOptions.length} servicios
+          </p>
+
+          <div class="picker__list" data-picker-list>
+            {
+              prices.map((group) => (
+                <div class="picker__group" data-picker-group>
+                  <p class="picker__groupTitle">
+                    <span aria-hidden="true">{group.icon}</span>
+                    {group.label}
+                  </p>
+                  {group.items.map(([name, value]) => (
+                    <button
+                      type="button"
+                      class="picker__option"
+                      data-picker-option
+                      data-name={name}
+                      data-search={`${group.label} ${name}`}
+                      aria-pressed="false"
+                    >
+                      <span>{name}</span>
+                      <span class="picker__price">
+                        <span class="price-row__from">Desde</span>
+                        {value}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ))
+            }
+            <p class="picker__empty" data-picker-empty hidden>
+              Ningún servicio coincide con tu búsqueda.
+            </p>
+          </div>
+
+          <button type="button" class="picker__other" data-picker-other aria-pressed="false">
+            Otro (descríbelo tu mismo)
+          </button>
+        </div>
+      </div>
 
       <label>
         Cuéntanos un poco más
-        <textarea name="message" placeholder="Fecha ideal, referencias o preguntas..." rows={3}></textarea>
+        <textarea
+          name="message"
+          data-booking-message
+          placeholder="Fecha ideal, referencias o preguntas..."
+          rows={3}></textarea>
       </label>
 
       <button class="button button-gold" type="submit">
@@ -50,3 +124,338 @@ import { services, socials } from '@/data/site'
     </form>
   </div>
 </section>
+
+<script>
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+
+  document.querySelectorAll<HTMLElement>('[data-service-picker]').forEach((picker) => {
+    const trigger = picker.querySelector<HTMLButtonElement>('[data-picker-trigger]')!
+    const text = picker.querySelector<HTMLElement>('[data-picker-text]')!
+    const panel = picker.querySelector<HTMLElement>('[data-picker-panel]')!
+    const search = picker.querySelector<HTMLInputElement>('[data-picker-search]')!
+    const count = picker.querySelector<HTMLElement>('[data-picker-count]')!
+    const empty = picker.querySelector<HTMLElement>('[data-picker-empty]')!
+    const hidden = picker.querySelector<HTMLInputElement>('[data-service-value]')!
+    const error = picker.querySelector<HTMLElement>('[data-picker-error]')!
+    const groups = [...picker.querySelectorAll<HTMLElement>('[data-picker-group]')]
+    const options = [...picker.querySelectorAll<HTMLButtonElement>('[data-picker-option]')]
+    const other = picker.querySelector<HTMLButtonElement>('[data-picker-other]')!
+    const message = picker.querySelector<HTMLTextAreaElement>('[data-booking-message]')
+    const form = picker.closest('form')
+
+    const basePlaceholder = message?.placeholder ?? ''
+    const index = options.map((option) => normalize(option.dataset.search ?? ''))
+
+    const setOpen = (open: boolean) => {
+      panel.hidden = !open
+      trigger.setAttribute('aria-expanded', String(open))
+      if (open) {
+        search.value = ''
+        applyFilter('')
+        search.focus()
+      }
+    }
+
+    const visibleOptions = () => options.filter((option) => !option.hidden)
+
+    function applyFilter(query: string) {
+      const term = normalize(query.trim())
+      let shown = 0
+      options.forEach((option, i) => {
+        const match = term === '' || index[i].includes(term)
+        option.hidden = !match
+        if (match) shown++
+      })
+      groups.forEach((group) => {
+        group.hidden = ![...group.querySelectorAll<HTMLButtonElement>('[data-picker-option]')].some(
+          (o) => !o.hidden,
+        )
+      })
+      empty.hidden = shown !== 0
+      count.textContent =
+        term === ''
+          ? `${options.length} servicios`
+          : `${shown} ${shown === 1 ? 'servicio' : 'servicios'}`
+    }
+
+    const select = (name: string, isOther: boolean) => {
+      hidden.value = name
+      text.textContent = isOther ? 'Otro (descríbelo tu mismo)' : name
+      trigger.dataset.empty = 'false'
+      error.hidden = true
+      options.forEach((option) => option.setAttribute('aria-pressed', String(option.dataset.name === name)))
+      other.setAttribute('aria-pressed', String(isOther))
+      if (message) {
+        message.placeholder = isOther
+          ? 'Describe el servicio que te gustaría...'
+          : basePlaceholder
+      }
+      setOpen(false)
+      trigger.focus()
+      if (isOther) message?.focus()
+    }
+
+    trigger.addEventListener('click', () => setOpen(panel.hidden))
+
+    search.addEventListener('input', () => applyFilter(search.value))
+
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const list = visibleOptions()
+        const index = list.indexOf(document.activeElement as HTMLButtonElement)
+        const next = event.key === 'ArrowDown' ? index + 1 : index - 1
+        const target = list[Math.max(0, Math.min(list.length - 1, next))]
+        target?.focus()
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        const first = visibleOptions()[0]
+        if (first) select(first.dataset.name ?? '', false)
+      }
+    })
+
+    options.forEach((option) => {
+      option.addEventListener('click', () => select(option.dataset.name ?? '', false))
+    })
+
+    other.addEventListener('click', () => select('Otro', true))
+
+    panel.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+        trigger.focus()
+      }
+    })
+
+    document.addEventListener('click', (event) => {
+      if (!panel.hidden && !picker.contains(event.target as Node)) setOpen(false)
+    })
+
+    form?.addEventListener('submit', (event) => {
+      if (hidden.value) return
+      event.preventDefault()
+      error.hidden = false
+      setOpen(true)
+    })
+  })
+</script>
+
+<style>
+  .field {
+    position: relative;
+    margin-bottom: 22px;
+  }
+
+  .field__label {
+    display: block;
+    color: #aaa69e;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .picker__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 11px 0 12px;
+    background: transparent;
+    color: #fff;
+    font: 15px 'DM Sans';
+    text-align: left;
+    cursor: pointer;
+    outline: 0;
+  }
+
+  .picker__trigger:hover,
+  .picker__trigger:focus-visible {
+    border-color: var(--gold);
+  }
+
+  .picker__trigger[data-empty='true'] #picker-trigger-text {
+    color: #8a857c;
+  }
+
+  .picker__trigger svg {
+    flex: none;
+    color: var(--gold);
+    transition: transform 0.25s ease;
+  }
+
+  .picker__trigger[aria-expanded='true'] svg {
+    transform: rotate(180deg);
+  }
+
+  .picker__error {
+    margin: 10px 0 0;
+    color: #d98b7a;
+    font-size: 12px;
+  }
+
+  .picker__error[hidden],
+  .picker__empty[hidden],
+  .picker__group[hidden],
+  .picker__panel[hidden] {
+    display: none;
+  }
+
+  .picker__panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    z-index: 40;
+    margin-top: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #12100e;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+
+  .picker__searchWrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .picker__searchWrap svg {
+    flex: none;
+    color: #7d786f;
+  }
+
+  .picker__search {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font: 15px 'DM Sans';
+    padding: 14px 0;
+    outline: 0;
+  }
+
+  .picker__search::placeholder {
+    color: #7d786f;
+  }
+
+  .picker__count {
+    margin: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #8a857c;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .picker__list {
+    max-height: 264px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+
+  .picker__list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .picker__list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .picker__list::-webkit-scrollbar-thumb {
+    background: var(--gold);
+    border-radius: 3px;
+  }
+
+  .picker__groupTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 16px 6px;
+    color: var(--gold-light);
+    font: 400 11px 'DM Sans';
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .picker__option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #e8e5e0;
+    padding: 9px 16px;
+    font: 400 14px 'DM Sans';
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .picker__option:hover,
+  .picker__option:focus-visible {
+    background: rgba(201, 168, 105, 0.12);
+    color: #fff;
+    outline: 0;
+  }
+
+  .picker__option[aria-pressed='true'] {
+    background: rgba(201, 168, 105, 0.2);
+    color: #fff;
+  }
+
+  .picker__option[hidden] {
+    display: none;
+  }
+
+  .picker__price {
+    white-space: nowrap;
+    color: var(--gold-light);
+    font-size: 13px;
+  }
+
+  .picker__empty {
+    margin: 0;
+    padding: 18px 16px;
+    color: #8a857c;
+    font-size: 13px;
+  }
+
+  .picker__other {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--gold-light);
+    padding: 13px 16px;
+    font: 400 12px 'DM Sans';
+    letter-spacing: 0.06em;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .picker__other:hover {
+    background: rgba(201, 168, 105, 0.12);
+    color: #fff;
+  }
+</style>

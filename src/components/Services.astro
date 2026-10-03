@@ -3,6 +3,7 @@ import { Image } from 'astro:assets'
 import { ArrowUpRight } from 'lucide-react'
 
 import { services } from '@/data/site'
+import { fitWidths } from '@/lib/images'
 ---
 
 <section id="servicios" class="services section-pad dark-section">
@@ -20,33 +21,40 @@ import { services } from '@/data/site'
     <div class="service-grid">
       {
         services.map((service, i) => (
-          <button
-            type="button"
-            class={`service-card card-${i + 1}`}
-            data-reveal
-            style={`--reveal-delay:${i * 140}ms`}
-            data-service-trigger={i}
-          >
-            <div class="service-image">
-              <Image
-                src={service.image}
-                alt={`Servicio de ${service.title}`}
-                widths={[390, 585, 780, 928]}
-                sizes="(max-width: 700px) 90vw, 33vw"
-                format="webp"
-                quality={78}
-              />
+          <div class="service-card-wrap">
+            <div class="service-gallery">
+            {service.images.map((image, n) => (
+              <button
+                type="button"
+                class="service-gallery-item"
+                data-reveal
+                style={`--reveal-delay:${i * 140 + n * 90}ms`}
+                data-service-trigger={`${i}-${n}`}
+                aria-label={`Ver ${service.title}, foto ${n + 1} de ${service.images.length}`}
+              >
+                <Image
+                  src={image}
+                  alt={`${service.title} — foto ${n + 1}`}
+                  widths={fitWidths([240, 390, 585, 780], image.width)}
+                  sizes={n < 2 ? '(max-width: 700px) 48vw, 26vw' : '(max-width: 700px) 32vw, 16vw'}
+                  format="webp"
+                  quality={72}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </button>
+            ))}
+          </div>
+          <div class="service-info" data-reveal style={`--reveal-delay:${i * 140 + 440}ms`}>
+            <div>
+              <span>{service.label}</span>
+              <h3>{service.title}</h3>
             </div>
-            <div class="service-info">
-              <div>
-                <span>{service.label}</span>
-                <h3>{service.title}</h3>
-              </div>
-              <span class="round-arrow">
-                <ArrowUpRight size={18} />
-              </span>
+            <span class="round-arrow">
+              <ArrowUpRight size={18} />
+</span>
             </div>
-          </button>
+          </div>
         ))
       }
     </div>
